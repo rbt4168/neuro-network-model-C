@@ -1,1 +1,1 @@
-"# neuro-network-model-C" 
+# neuro-network-model-C
