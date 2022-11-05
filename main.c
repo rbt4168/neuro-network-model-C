@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 
+// structures and functions for data load
 typedef struct data_structure {
     unsigned magic_number;
     unsigned data_count;
@@ -65,6 +66,8 @@ label_structure *load_label(const char *file_name) {
     return new_label_structure;
 }
 
+
+// a neuro unit
 typedef struct {
     double output_derivative;
     double input_derivative;
@@ -73,6 +76,7 @@ typedef struct {
     double value;
 } neuro_unit;
 
+// a layer of neuro unit
 typedef struct {
     int unit_count;
     int next_layer_unit_count;
@@ -80,11 +84,12 @@ typedef struct {
     neuro_unit **unit;
 } neuro_layer;
 
+// a neuro network
 typedef struct {
     int layer_count;
     neuro_layer **layer;
 } neuro_network;
-
+// init a neuro network
 neuro_network *build_net_work(int layer_count, int *layer_unit_count) {
     if (layer_count < 2) printf("layer count error.\n");
     for (int i = 0; i < layer_count; ++i) {
@@ -135,22 +140,17 @@ neuro_network *build_net_work(int layer_count, int *layer_unit_count) {
     return new_neuro_net_work;
 }
 
-void clean_network(neuro_network *nn) {
-    for (int i = 0; i < nn->layer_count; ++i) {
-        for (int j = 0; j < nn->layer[i]->unit_count; ++j) {
-            memset(nn->layer[i]->unit[j]->weights_derivative, 0, sizeof(double) * nn->layer[i]->next_layer_unit_count);
-        }
-    }
-}
-
+// sigmoid function
 double sigmoid(double ix) {
     return 1.0 / (1.0 + exp(-ix));
 }
 
+// derivative of sigmoid function
 double derivative_sigmoid(double ix) {
     return sigmoid(ix) * (1.0 - sigmoid(ix));
 }
 
+// forward propagation
 void forward_propagation(neuro_network *nn, double *data) {
     // write input
     for (int i = 0; i < nn->layer[0]->unit_count; ++i) {
@@ -200,6 +200,15 @@ void backward_propagation(neuro_network *nn, double *target) {
         }
     }
 }
+
+void clean_network(neuro_network *nn) {
+    for (int i = 0; i < nn->layer_count; ++i) {
+        for (int j = 0; j < nn->layer[i]->unit_count; ++j) {
+            memset(nn->layer[i]->unit[j]->weights_derivative, 0, sizeof(double) * nn->layer[i]->next_layer_unit_count);
+        }
+    }
+}
+
 
 double fix_error_value(neuro_network *nn, double alpha) {
     double fixed_val = 0;
@@ -276,12 +285,15 @@ neuro_network *load_network(const char *filename) {
     return nn;
 }
 
+/*
 void pick(int range, int count, int *pic) {
     for (int i = 0; i < count; ++i) {
         pic[i] = (int) ((range - 1) * ((double) rand() / RAND_MAX));
     }
 }
+ */
 
+// train network
 void
 train_network(neuro_network *nn, data_structure *train_data, label_structure *train_label, factor_structure *factors) {
     srand(44448763);
@@ -305,6 +317,7 @@ train_network(neuro_network *nn, data_structure *train_data, label_structure *tr
     }
 }
 
+// test network validation
 void test_validation(neuro_network *nn, data_structure *test_data, label_structure *test_label) {
     int judge_matrix[10][10] = {0};
     int valid = 0;
@@ -338,11 +351,11 @@ int main() {
 
     // [784 20 10]
     // [0 0.0003 1.0 10000]
-    factor_structure *facs = write_factor(0, 0.0003, 0.5, 10000);
+    factor_structure *facs = write_factor(0, 0.0003, 0.2, 10000);
 
-    neuro_network *network = load_network("network6");
+    neuro_network *network = load_network("network7");
     train_network(network, train_data, train_label, facs);
-    save_network("network7", network);
+    save_network("network8", network);
 
     // for testing
     data_structure *test_data = load_data("test_file");
