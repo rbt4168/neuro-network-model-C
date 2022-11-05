@@ -1,23 +1,40 @@
 # neuro-network-model-C
 Model is Artificial Neural Network (ANN)
 
-And It's Math Theory
+## Result
+```
+[ 9040 / 10000 ] validation. accuracy = 90.400000 %.
+Judge matrix
+        0       1       2       3       4       5       6       7       8       9
+0       945     0       4       2       2       7       13      2       5       0
+1       0       1114    4       5       1       0       3       2       6       0
+2       19      7       898     17      19      2       20      19      25      6
+3       6       0       34      879     0       40      7       16      18      10
+4       2       1       4       0       912     1       14      3       4       41
+5       19      1       13      45      19      723     16      14      32      10
+6       19      2       11      0       19      12      888     1       6       0
+7       0       15      22      4       11      1       0       944     5       26
+8       7       10      9       20      15      27      13      14      851     8
+9       13      8       4       9       43      10      1       21      14      886
+```
 
-## Main Function
+## Mathematical Theory
 
-### Activation function (Sigmoid)
+### Main Functions
+
+#### Activation Function (Sigmoid)
 $$σ(x) = \frac{1}{1+e^{-x}}$$
 
 $$σ'(x) = σ(x)(1-σ(x))$$
 
-### Error function
+#### Error function
 $$E(x,T) = \frac{1}{2}(x-T)^2$$
 
 $$\frac{\partial E(x,T)}{\partial x} = x-T$$
 
-## Propagation Function
+### Propagation Functions
 
-### Definition
+#### Definition
 $U_{ij}$ : neuro unit at $i_{th}$ layer $j_{th}$ place (or a structure contained $u_{ij},v_{ij},x_{ij},y_{ij}$)
 
 $u_{ij}$ : store in $U_{ij}$ ,the sum of input value.
@@ -40,13 +57,13 @@ $n$ : layer count.
 
 
 
-### Front propagation
+#### Front propagation
 Use $v,w$ to calculate $u$ : 
 $$u_{ij} = \sum_{k=1}^{m_i}v_{(i-1)k}w_{(i-1)kj}$$
 Use $u$ to calculate $v$ : 
 $$v_{ij}=σ(u_{ij})$$
 
-### Back propagation
+#### Back propagation
 
 Calculate last layer's $y$ :
 $v_{Ti}$ : the $i_{th}$ value of target output
