@@ -59,6 +59,12 @@ Use $w,x$ to calculate other layer's $y$ :
 $$y_{ij} = \frac {\partial E}{\partial v_{ij}} =  \sum_{k=1}^{m_{i+1}}\frac{\partial u_{(i+1)k}}{\partial v_{ij}}\frac{\partial E}{\partial u_{(i+1)k}} = \sum_{k=1}^{m_{i+1}}\frac{\partial(\sum_{j=1}^{m_{i+1}}v_{ij}w_{ijk})}{\partial v_{ij}}\frac{\partial E}{\partial u_{(i+1)k}} =  \sum_{k=1}^{m_{i+1}}w_{ijk}x_{(i+1)k}$$
 
 ### Fix weight
-Fix with gradient descendent (GD) : 
+Fix with stochastic gradient descendent (SGD) : 
+
 $α$ : alpha factor (aka η, learning rate)
-$$w_{ijk} \leftarrow w_{ijk} + αδ_{ijk}$$
+
+$K$ : batch size.
+
+$$w_{ijk} \leftarrow w_{ijk} + α\frac{1}{K}\sum δ_{ijk}$$
+
+My method is set $α=0.9, K=500$
