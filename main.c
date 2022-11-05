@@ -41,7 +41,7 @@ data_structure *load_data(const char *file_name) {
         new_data_structure->data[i] = (double *) malloc(data_depth * sizeof(double));
         fread(tmp, 1, data_depth, data_file);
         for (int j = 0; j < data_depth; ++j) {
-            new_data_structure->data[i][j] = ((double) tmp[j]) / 128;
+            new_data_structure->data[i][j] = ((double) ((unsigned char) tmp[j])) / 256;
         }
     }
     fclose(data_file);
@@ -73,7 +73,8 @@ typedef struct {
     double input_derivative;
     double *weights;
     double *weights_derivative;
-    double value;
+    double output_value;
+    double input_value;
 } neuro_unit;
 
 // a layer of neuro unit
@@ -89,6 +90,7 @@ typedef struct {
     int layer_count;
     neuro_layer **layer;
 } neuro_network;
+
 // init a neuro network
 neuro_network *build_net_work(int layer_count, int *layer_unit_count) {
     if (layer_count < 2) printf("layer count error.\n");
@@ -126,7 +128,7 @@ neuro_network *build_net_work(int layer_count, int *layer_unit_count) {
             new_neuro_net_work->layer[i]->unit[j] = (neuro_unit *) malloc(sizeof(neuro_unit));
             new_neuro_net_work->layer[i]->unit[j]->output_derivative = 0;
             new_neuro_net_work->layer[i]->unit[j]->input_derivative = 0;
-            new_neuro_net_work->layer[i]->unit[j]->value = 0;
+            new_neuro_net_work->layer[i]->unit[j]->output_value = 0;
             new_neuro_net_work->layer[i]->unit[j]->weights =
                     (double *) malloc(sizeof(double) * next_layer);
             for (int k = 0; k < next_layer; ++k) {
@@ -154,38 +156,45 @@ double derivative_sigmoid(double ix) {
 void forward_propagation(neuro_network *nn, double *data) {
     // write input
     for (int i = 0; i < nn->layer[0]->unit_count; ++i) {
-        nn->layer[0]->unit[i]->value = data[i];
+        nn->layer[0]->unit[i]->output_value = data[i];
     }
     // propagation
     for (int i = 1; i < nn->layer_count; ++i) {
         for (int j = 0; j < nn->layer[i]->unit_count; ++j) {
             double sum = 0;
             for (int k = 0; k < nn->layer[i]->pre_layer_unit_count; ++k) {
-                sum += nn->layer[i - 1]->unit[k]->value * nn->layer[i - 1]->unit[k]->weights[j];
+                sum += nn->layer[i - 1]->unit[k]->output_value * nn->layer[i - 1]->unit[k]->weights[j];
             }
-            nn->layer[i]->unit[j]->value = sigmoid(sum);
+            nn->layer[i]->unit[j]->input_value = sum;
+            nn->layer[i]->unit[j]->output_value = sigmoid(sum);
         }
     }
 }
 
-void backward_propagation(neuro_network *nn, double *target) {
+int backward_propagation(neuro_network *nn, double *target) {
+    int error = 0, select = 0, target_select = 0;
     // last layer
     for (int i = 0; i < nn->layer[nn->layer_count - 1]->unit_count; ++i) {
         // solve out derivative
         nn->layer[nn->layer_count - 1]->unit[i]->output_derivative =
-                nn->layer[nn->layer_count - 1]->unit[i]->value - target[i];
+                nn->layer[nn->layer_count - 1]->unit[i]->output_value - target[i];
         // solve in derivative
         nn->layer[nn->layer_count - 1]->unit[i]->input_derivative =
-                derivative_sigmoid(nn->layer[nn->layer_count - 1]->unit[i]->value) *
+                derivative_sigmoid(nn->layer[nn->layer_count - 1]->unit[i]->input_value) *
                 nn->layer[nn->layer_count - 1]->unit[i]->output_derivative;
+        if (target[i] > target[target_select]) target_select = i;
+        if (nn->layer[nn->layer_count - 1]->unit[i]->output_value >
+            nn->layer[nn->layer_count - 1]->unit[select]->output_value)
+            select = i;
     }
+    error = (select != target_select);
     // hidden layer
     for (int i = nn->layer_count - 2; i >= 0; --i) {
         for (int j = 0; j < nn->layer[i]->unit_count; ++j) {
             // solve weight derivative (error sum up)
             for (int k = 0; k < nn->layer[i]->next_layer_unit_count; ++k) {
                 nn->layer[i]->unit[j]->weights_derivative[k] +=
-                        nn->layer[i + 1]->unit[k]->input_derivative * nn->layer[i]->unit[j]->value;
+                        nn->layer[i + 1]->unit[k]->input_derivative * nn->layer[i]->unit[j]->output_value;
             }
             // solve out derivative
             double output_der = 0.0;
@@ -196,9 +205,10 @@ void backward_propagation(neuro_network *nn, double *target) {
             nn->layer[i]->unit[j]->output_derivative = output_der;
             //solve in derivative
             nn->layer[i]->unit[j]->input_derivative =
-                    derivative_sigmoid(nn->layer[i]->unit[j]->value) * nn->layer[i]->unit[j]->output_derivative;
+                    derivative_sigmoid(nn->layer[i]->unit[j]->input_value) * nn->layer[i]->unit[j]->output_derivative;
         }
     }
+    return error;
 }
 
 void clean_network(neuro_network *nn) {
@@ -211,31 +221,31 @@ void clean_network(neuro_network *nn) {
 
 
 double fix_error_value(neuro_network *nn, double alpha) {
-    double fixed_val = 0;
+    double fixed_val_square = 0;
     for (int i = 0; i < nn->layer_count - 1; ++i) {
         for (int j = 0; j < nn->layer[i]->unit_count; ++j) {
             for (int k = 0; k < nn->layer[i]->next_layer_unit_count; ++k) {
-                fixed_val +=
+                fixed_val_square +=
                         nn->layer[i]->unit[j]->weights_derivative[k] * nn->layer[i]->unit[j]->weights_derivative[k];
                 nn->layer[i]->unit[j]->weights[k] -= alpha * nn->layer[i]->unit[j]->weights_derivative[k];
             }
         }
     }
-    return sqrt(fixed_val);
+    return sqrt(fixed_val_square);
 }
 
 typedef struct {
     double alpha_factor;
-    double multiple_factor;
     double allow_error;
     int max_train_times;
+    int batch_size;
 } factor_structure;
 
 factor_structure *
-write_factor(double alpha, double mult, double allowerr, int train_times) {
+write_factor(double alpha, int batch_siz, double allowerr, int train_times) {
     factor_structure *new_factor_structure = (factor_structure *) malloc(sizeof(factor_structure));
     new_factor_structure->alpha_factor = alpha;
-    new_factor_structure->multiple_factor = mult;
+    new_factor_structure->batch_size = batch_siz;
     new_factor_structure->allow_error = allowerr;
     new_factor_structure->max_train_times = train_times;
     return new_factor_structure;
@@ -285,55 +295,59 @@ neuro_network *load_network(const char *filename) {
     return nn;
 }
 
-/*
+
 void pick(int range, int count, int *pic) {
     for (int i = 0; i < count; ++i) {
         pic[i] = (int) ((range - 1) * ((double) rand() / RAND_MAX));
     }
 }
- */
 
 // train network
 void
 train_network(neuro_network *nn, data_structure *train_data, label_structure *train_label, factor_structure *factors) {
-    srand(44448763);
     // initial network
     // neuro_network *nn = build_net_work(factors->layer_count, factors->unit_count);
-    double current_alpha = factors->alpha_factor;
-    double multiple_factor = factors->multiple_factor;
+    double alpha_factor = factors->alpha_factor;
     double allowed_error = factors->allow_error;
     int max_training_times = factors->max_train_times;
+    int bach = factors->batch_size;
+    double alphas = factors->alpha_factor / bach;
+    int *pickxs = malloc(sizeof(int) * bach);
     double error_length = HUGE_VAL;
     for (int i = 0; i < max_training_times; ++i) {
-        for (int j = 0; j < train_data->data_count; ++j) {
-            forward_propagation(nn, train_data->data[j]);
-            backward_propagation(nn, train_label->data[j]);
+        int error_sum = 0;
+        pick(train_data->data_count, bach, pickxs);
+        for (int j = 0; j < bach; ++j) {
+            forward_propagation(nn, train_data->data[pickxs[j]]);
+            error_sum += backward_propagation(nn, train_label->data[pickxs[j]]);
         }
-        error_length = fix_error_value(nn, current_alpha) / sqrt(train_data->data_count);
-        current_alpha = multiple_factor * error_length;
-        printf("error_length(RMS) = %0.15lf , alpha_factor(Eta) = %0.15f\n", error_length, current_alpha);
+        printf("", error_sum);
+        error_length = fix_error_value(nn, alphas);
+        printf("iter = %d , err = %0.3lf% , el = %0.3lf , alpha = %0.3lf\n",
+               i, ((double) 100.0 * error_sum / bach), error_length, alpha_factor);
         clean_network(nn);
-        if (error_length < allowed_error) break;
+        if (((double) error_sum / bach) < allowed_error) break;
     }
 }
 
 // test network validation
 void test_validation(neuro_network *nn, data_structure *test_data, label_structure *test_label) {
     int judge_matrix[10][10] = {0};
-    int valid = 0;
-    for (int i = 0; i < test_data->data_count; ++i) {
+    int valid = 0, used_data = test_data->data_count;
+    for (int i = 0; i < used_data; ++i) {
         forward_propagation(nn, test_data->data[i]);
         int sel = 0, tar = 0;
         for (int j = 0; j < 10; ++j) {
-            if (nn->layer[nn->layer_count - 1]->unit[j]->value > nn->layer[nn->layer_count - 1]->unit[sel]->value)
+            if (nn->layer[nn->layer_count - 1]->unit[j]->output_value >
+                nn->layer[nn->layer_count - 1]->unit[sel]->output_value)
                 sel = j;
             if (test_label->data[i][j] > test_label->data[i][tar]) tar = j;
         }
         judge_matrix[tar][sel]++;
         if (tar == sel) valid++;
     }
-    printf("[ %d / %d ] validation. accuracy = %lf %.\n", valid, test_data->data_count,
-           ((double) 100.0 * valid) / test_data->data_count);
+    printf("[ %d / %d ] validation. accuracy = %lf %.\n", valid, used_data,
+           ((double) 100.0 * valid) / used_data);
     printf("Judge matrix\n\t0\t1\t2\t3\t4\t5\t6\t7\t8\t9\n");
     for (int i = 0; i < 10; ++i) {
         printf("%d\t", i);
@@ -345,17 +359,17 @@ void test_validation(neuro_network *nn, data_structure *test_data, label_structu
 }
 
 int main() {
+    srand(44448763);
+
     // for trainning
     data_structure *train_data = load_data("train_file");
     label_structure *train_label = load_label("train_label");
 
     // [784 20 10]
-    // [0 0.0003 1.0 10000]
-    factor_structure *facs = write_factor(0, 0.0003, 0.2, 10000);
-
-    neuro_network *network = load_network("network7");
+    neuro_network *network = load_network("network11");
+    factor_structure *facs = write_factor(0.9, 500, 0.05, 10000);
     train_network(network, train_data, train_label, facs);
-    save_network("network8", network);
+    save_network("network12", network);
 
     // for testing
     data_structure *test_data = load_data("test_file");
