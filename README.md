@@ -1,7 +1,7 @@
-# neuro-network-model-C
-Model is Artificial Neural Network (ANN)
+# Neuro Network Model in C
+Model is Artificial Neural Network (ANN).
 
-## Result
+## Trainning Result
 ```
 [ 9040 / 10000 ] validation. accuracy = 90.400000 %.
 Judge matrix
@@ -85,3 +85,15 @@ $K$ : batch size.
 $$w_{ijk} \leftarrow w_{ijk} + α\frac{1}{K}\sum δ_{ijk}$$
 
 My method is set $α=0.9, K=500$
+
+## Reference
+https://en.wikipedia.org/wiki/Stochastic_gradient_descent
+
+https://en.wikipedia.org/wiki/Learning_rate
+
+https://medium.com/uxai/%E6%A9%9F%E5%99%A8%E5%AD%B8%E7%BF%92%E9%A6%AC%E6%8B%89%E6%9D%BE-075-%E5%8F%8D%E5%90%91%E5%82%B3%E6%92%AD-backpropagation-f1b612e003df
+
+
+C is the most beautiful language in the world.
+
+--rbt4168 2022/11/06
