@@ -323,7 +323,7 @@ train_network(neuro_network *nn, data_structure *train_data, label_structure *tr
         }
         printf("", error_sum);
         error_length = fix_error_value(nn, alphas);
-        printf("iter = %d , err = %0.3lf% , el = %0.3lf , alpha = %0.3lf\n",
+        printf("iter = %d , err = %0.3lf% , el = %0.3lf\n",
                i, ((double) 100.0 * error_sum / bach), error_length, alpha_factor);
         clean_network(nn);
         if (((double) error_sum / bach) < allowed_error) break;
@@ -366,7 +366,9 @@ int main() {
     label_structure *train_label = load_label("train_label");
 
     // [784 20 10]
-    neuro_network *network = load_network("network11");
+    int layer_cnt = 3;
+    int unit_cnt[] = {784, 20, 10};
+    neuro_network *network = build_net_work(layer_cnt, unit_cnt); // load_network("network11");
     factor_structure *facs = write_factor(0.9, 500, 0.05, 10000);
     train_network(network, train_data, train_label, facs);
     save_network("network12", network);
