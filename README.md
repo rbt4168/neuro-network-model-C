@@ -84,7 +84,7 @@ $K$ : batch size.
 
 $$w_{ijk} \leftarrow w_{ijk} + α\frac{1}{K}\sum δ_{ijk}$$
 
-My method is set $α=0.9, K=500$
+My method is set $α=0.9, K=300$
 
 ## Reference
 https://en.wikipedia.org/wiki/Stochastic_gradient_descent

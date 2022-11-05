@@ -69,12 +69,12 @@ label_structure *load_label(const char *file_name) {
 
 // a neuro unit
 typedef struct {
-    double output_derivative;
+    double input_value;
+    double output_value;
     double input_derivative;
+    double output_derivative;
     double *weights;
     double *weights_derivative;
-    double output_value;
-    double input_value;
 } neuro_unit;
 
 // a layer of neuro unit
@@ -90,6 +90,52 @@ typedef struct {
     int layer_count;
     neuro_layer **layer;
 } neuro_network;
+
+// function for save a network
+void save_network(const char *filename, neuro_network *nn) {
+    FILE *nnfile = fopen(filename, "wb");
+    fwrite(&nn->layer_count, 4, 1, nnfile);
+    for (int i = 0; i < nn->layer_count; ++i) {
+        fwrite(&nn->layer[i]->unit_count, 4, 1, nnfile);
+        fwrite(&nn->layer[i]->pre_layer_unit_count, 4, 1, nnfile);
+        fwrite(&nn->layer[i]->next_layer_unit_count, 4, 1, nnfile);
+        for (int j = 0; j < nn->layer[i]->unit_count; ++j) {
+            fwrite(nn->layer[i]->unit[j]->weights, sizeof(double),
+                   nn->layer[i]->next_layer_unit_count, nnfile);
+            fwrite(nn->layer[i]->unit[j]->weights_derivative, sizeof(double),
+                   nn->layer[i]->next_layer_unit_count, nnfile);
+        }
+    }
+    fclose(nnfile);
+    printf("complete save network : filename = %s.\n", filename);
+}
+
+// function for load a network
+neuro_network *load_network(const char *filename) {
+    FILE *nnfile = fopen(filename, "rb");
+    neuro_network *nn = (neuro_network *) malloc(sizeof(neuro_network));
+    fread(&nn->layer_count, 4, 1, nnfile);
+    nn->layer = (neuro_layer **) malloc(sizeof(neuro_layer *) * nn->layer_count);
+    for (int i = 0; i < nn->layer_count; ++i) {
+        nn->layer[i] = (neuro_layer *) malloc(sizeof(neuro_layer));
+        fread(&nn->layer[i]->unit_count, 4, 1, nnfile);
+        fread(&nn->layer[i]->pre_layer_unit_count, 4, 1, nnfile);
+        fread(&nn->layer[i]->next_layer_unit_count, 4, 1, nnfile);
+        nn->layer[i]->unit = (neuro_unit **) malloc(sizeof(neuro_unit *) * nn->layer[i]->unit_count);
+        for (int j = 0; j < nn->layer[i]->unit_count; ++j) {
+            nn->layer[i]->unit[j] = (neuro_unit *) malloc(sizeof(neuro_unit));
+            nn->layer[i]->unit[j]->weights = (double *) malloc(sizeof(double) * nn->layer[i]->unit_count);
+            fread(nn->layer[i]->unit[j]->weights, sizeof(double),
+                  nn->layer[i]->next_layer_unit_count, nnfile);
+            nn->layer[i]->unit[j]->weights_derivative = (double *) malloc(sizeof(double) * nn->layer[i]->unit_count);
+            fread(nn->layer[i]->unit[j]->weights_derivative, sizeof(double),
+                  nn->layer[i]->next_layer_unit_count, nnfile);
+        }
+    }
+    fclose(nnfile);
+    printf("load network file(%s).\n", filename);
+    return nn;
+}
 
 // init a neuro network
 neuro_network *build_net_work(int layer_count, int *layer_unit_count) {
@@ -171,6 +217,7 @@ void forward_propagation(neuro_network *nn, double *data) {
     }
 }
 
+// backward propagation (return if it has error)
 int backward_propagation(neuro_network *nn, double *target) {
     int error = 0, select = 0, target_select = 0;
     // last layer
@@ -211,6 +258,7 @@ int backward_propagation(neuro_network *nn, double *target) {
     return error;
 }
 
+// clean delta of weights
 void clean_network(neuro_network *nn) {
     for (int i = 0; i < nn->layer_count; ++i) {
         for (int j = 0; j < nn->layer[i]->unit_count; ++j) {
@@ -219,7 +267,7 @@ void clean_network(neuro_network *nn) {
     }
 }
 
-
+// fix weights (return the "Euclidean Distance" of grad(W))
 double fix_error_value(neuro_network *nn, double alpha) {
     double fixed_val_square = 0;
     for (int i = 0; i < nn->layer_count - 1; ++i) {
@@ -234,6 +282,7 @@ double fix_error_value(neuro_network *nn, double alpha) {
     return sqrt(fixed_val_square);
 }
 
+// structure of training factors
 typedef struct {
     double alpha_factor;
     double allow_error;
@@ -241,8 +290,8 @@ typedef struct {
     int batch_size;
 } factor_structure;
 
-factor_structure *
-write_factor(double alpha, int batch_siz, double allowerr, int train_times) {
+// build structure of training factors
+factor_structure *write_factor(double alpha, int batch_siz, double allowerr, int train_times) {
     factor_structure *new_factor_structure = (factor_structure *) malloc(sizeof(factor_structure));
     new_factor_structure->alpha_factor = alpha;
     new_factor_structure->batch_size = batch_siz;
@@ -251,51 +300,7 @@ write_factor(double alpha, int batch_siz, double allowerr, int train_times) {
     return new_factor_structure;
 }
 
-void save_network(const char *filename, neuro_network *nn) {
-    FILE *nnfile = fopen(filename, "wb");
-    fwrite(&nn->layer_count, 4, 1, nnfile);
-    for (int i = 0; i < nn->layer_count; ++i) {
-        fwrite(&nn->layer[i]->unit_count, 4, 1, nnfile);
-        fwrite(&nn->layer[i]->pre_layer_unit_count, 4, 1, nnfile);
-        fwrite(&nn->layer[i]->next_layer_unit_count, 4, 1, nnfile);
-        for (int j = 0; j < nn->layer[i]->unit_count; ++j) {
-            fwrite(nn->layer[i]->unit[j]->weights, sizeof(double),
-                   nn->layer[i]->next_layer_unit_count, nnfile);
-            fwrite(nn->layer[i]->unit[j]->weights_derivative, sizeof(double),
-                   nn->layer[i]->next_layer_unit_count, nnfile);
-        }
-    }
-    fclose(nnfile);
-    printf("complete save network : filename = %s.\n", filename);
-}
-
-neuro_network *load_network(const char *filename) {
-    FILE *nnfile = fopen(filename, "rb");
-    neuro_network *nn = (neuro_network *) malloc(sizeof(neuro_network));
-    fread(&nn->layer_count, 4, 1, nnfile);
-    nn->layer = (neuro_layer **) malloc(sizeof(neuro_layer *) * nn->layer_count);
-    for (int i = 0; i < nn->layer_count; ++i) {
-        nn->layer[i] = (neuro_layer *) malloc(sizeof(neuro_layer));
-        fread(&nn->layer[i]->unit_count, 4, 1, nnfile);
-        fread(&nn->layer[i]->pre_layer_unit_count, 4, 1, nnfile);
-        fread(&nn->layer[i]->next_layer_unit_count, 4, 1, nnfile);
-        nn->layer[i]->unit = (neuro_unit **) malloc(sizeof(neuro_unit *) * nn->layer[i]->unit_count);
-        for (int j = 0; j < nn->layer[i]->unit_count; ++j) {
-            nn->layer[i]->unit[j] = (neuro_unit *) malloc(sizeof(neuro_unit));
-            nn->layer[i]->unit[j]->weights = (double *) malloc(sizeof(double) * nn->layer[i]->unit_count);
-            fread(nn->layer[i]->unit[j]->weights, sizeof(double),
-                  nn->layer[i]->next_layer_unit_count, nnfile);
-            nn->layer[i]->unit[j]->weights_derivative = (double *) malloc(sizeof(double) * nn->layer[i]->unit_count);
-            fread(nn->layer[i]->unit[j]->weights_derivative, sizeof(double),
-                  nn->layer[i]->next_layer_unit_count, nnfile);
-        }
-    }
-    fclose(nnfile);
-    printf("load network file(%s).\n", filename);
-    return nn;
-}
-
-
+// a random pick function (ugly I know)
 void pick(int range, int count, int *pic) {
     for (int i = 0; i < count; ++i) {
         pic[i] = (int) ((range - 1) * ((double) rand() / RAND_MAX));
@@ -303,8 +308,8 @@ void pick(int range, int count, int *pic) {
 }
 
 // train network
-void
-train_network(neuro_network *nn, data_structure *train_data, label_structure *train_label, factor_structure *factors) {
+void train_network(neuro_network *nn,
+                   data_structure *train_data, label_structure *train_label, factor_structure *factors) {
     // initial network
     // neuro_network *nn = build_net_work(factors->layer_count, factors->unit_count);
     double alpha_factor = factors->alpha_factor;
@@ -312,14 +317,14 @@ train_network(neuro_network *nn, data_structure *train_data, label_structure *tr
     int max_training_times = factors->max_train_times;
     int bach = factors->batch_size;
     double alphas = factors->alpha_factor / bach;
-    int *pickxs = malloc(sizeof(int) * bach);
+    int *picked_data = malloc(sizeof(int) * bach);
     double error_length = HUGE_VAL;
     for (int i = 0; i < max_training_times; ++i) {
+        pick(train_data->data_count, bach, picked_data);
         int error_sum = 0;
-        pick(train_data->data_count, bach, pickxs);
         for (int j = 0; j < bach; ++j) {
-            forward_propagation(nn, train_data->data[pickxs[j]]);
-            error_sum += backward_propagation(nn, train_label->data[pickxs[j]]);
+            forward_propagation(nn, train_data->data[picked_data[j]]);
+            error_sum += backward_propagation(nn, train_label->data[picked_data[j]]);
         }
         printf("", error_sum);
         error_length = fix_error_value(nn, alphas);
@@ -361,21 +366,22 @@ void test_validation(neuro_network *nn, data_structure *test_data, label_structu
 int main() {
     srand(44448763);
 
-    // for trainning
+    // data and label for trainning
     data_structure *train_data = load_data("train_file");
     label_structure *train_label = load_label("train_label");
+
+    // data and label for testing
+    data_structure *test_data = load_data("test_file");
+    label_structure *test_label = load_label("test_label");
 
     // [784 20 10]
     int layer_cnt = 3;
     int unit_cnt[] = {784, 20, 10};
     neuro_network *network = build_net_work(layer_cnt, unit_cnt); // load_network("network11");
-    factor_structure *facs = write_factor(0.9, 500, 0.05, 10000);
+    factor_structure *facs = write_factor(0.9, 300, 0.05, 10000);
+
     train_network(network, train_data, train_label, facs);
     save_network("network12", network);
-
-    // for testing
-    data_structure *test_data = load_data("test_file");
-    label_structure *test_label = load_label("test_label");
     test_validation(network, test_data, test_label);
 
     return 0;
