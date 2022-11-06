@@ -107,7 +107,7 @@ void save_network(const char *filename, neuro_network *nn) {
         }
     }
     fclose(nnfile);
-    printf("complete save network : filename = %s.\n", filename);
+    printf("save network file(%s).\n", filename);
 }
 
 // function for load a network
@@ -229,6 +229,7 @@ int backward_propagation(neuro_network *nn, double *target) {
         nn->layer[nn->layer_count - 1]->unit[i]->input_derivative =
                 derivative_sigmoid(nn->layer[nn->layer_count - 1]->unit[i]->input_value) *
                 nn->layer[nn->layer_count - 1]->unit[i]->output_derivative;
+        // solve error
         if (target[i] > target[target_select]) target_select = i;
         if (nn->layer[nn->layer_count - 1]->unit[i]->output_value >
             nn->layer[nn->layer_count - 1]->unit[select]->output_value)
@@ -310,13 +311,11 @@ void pick(int range, int count, int *pic) {
 // train network
 void train_network(neuro_network *nn,
                    data_structure *train_data, label_structure *train_label, factor_structure *factors) {
-    // initial network
-    // neuro_network *nn = build_net_work(factors->layer_count, factors->unit_count);
-    double alpha_factor = factors->alpha_factor;
     double allowed_error = factors->allow_error;
     int max_training_times = factors->max_train_times;
     int bach = factors->batch_size;
     double alphas = factors->alpha_factor / bach;
+
     int *picked_data = malloc(sizeof(int) * bach);
     double error_length = HUGE_VAL;
     for (int i = 0; i < max_training_times; ++i) {
@@ -326,10 +325,9 @@ void train_network(neuro_network *nn,
             forward_propagation(nn, train_data->data[picked_data[j]]);
             error_sum += backward_propagation(nn, train_label->data[picked_data[j]]);
         }
-        printf("", error_sum);
         error_length = fix_error_value(nn, alphas);
         printf("iter = %d , err = %0.3lf% , el = %0.3lf\n",
-               i, ((double) 100.0 * error_sum / bach), error_length, alpha_factor);
+               i, ((double) 100.0 * error_sum / bach), error_length);
         clean_network(nn);
         if (((double) error_sum / bach) < allowed_error) break;
     }
@@ -376,12 +374,12 @@ int main() {
 
     // [784 20 10]
     int layer_cnt = 3;
-    int unit_cnt[] = {784, 20, 10};
+    int unit_cnt[] = {784, 48, 10};
     neuro_network *network = build_net_work(layer_cnt, unit_cnt); // load_network("network11");
-    factor_structure *facs = write_factor(0.9, 300, 0.05, 10000);
+    factor_structure *facs = write_factor(0.9, 20, 0.00, 10000);
 
     train_network(network, train_data, train_label, facs);
-    save_network("network12", network);
+    save_network("network17", network);
     test_validation(network, test_data, test_label);
 
     return 0;

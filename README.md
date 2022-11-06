@@ -66,13 +66,21 @@ $$v_{ij}=σ(u_{ij})$$
 #### Back propagation
 
 Calculate last layer's $y$ :
+
 $v_{Ti}$ : the $i_{th}$ value of target output
+
 $$y_{ni} = \frac{\partial E}{\partial v_{ni}} = v_{ni}-v_{Ti}$$
+
 Use $u,y$ to calculate $x$ : 
+
 $$x_{ij} = \frac{\partial E}{\partial u_{ij}} = \frac{\partial E}{\partial v_{ij}}\frac{\partial v_{ij}}{\partial u_{ij}} = y_{ij}(\frac{\partial σ(u_{ij})}{\partial u_{ij}}) = y_{ij}σ'(u_{ij}) = y_{ij}σ(u_{ij})(1-σ(u_{ij}))$$
+
 Use $v,x$ to calculate $δ$ : 
+
 $$δ_{ijk} = \frac{\partial E}{\partial w_{ijk}} = \frac{\partial E}{\partial u_{(i+1)k}}\frac{\partial u_{(i+1)k}}{\partial w_{ijk}} = x_{(i+1)k}(\frac{\partial(\sum_{j=1}^{m_{i+1}}v_{ij}w_{ijk})}{\partial w_{ijk}}) = x_{(i+1)k}v_{ij}$$
+
 Use $w,x$ to calculate other layer's $y$ :
+
 $$y_{ij} = \frac {\partial E}{\partial v_{ij}} =  \sum_{k=1}^{m_{i+1}}\frac{\partial u_{(i+1)k}}{\partial v_{ij}}\frac{\partial E}{\partial u_{(i+1)k}} = \sum_{k=1}^{m_{i+1}}\frac{\partial(\sum_{j=1}^{m_{i+1}}v_{ij}w_{ijk})}{\partial v_{ij}}\frac{\partial E}{\partial u_{(i+1)k}} =  \sum_{k=1}^{m_{i+1}}w_{ijk}x_{(i+1)k}$$
 
 ### Fix weight
